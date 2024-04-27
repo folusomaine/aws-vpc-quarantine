@@ -82,7 +82,7 @@ Resources:
   PrivateEC2Instance:
     Type: 'AWS::EC2::Instance'
     Properties:
-      ImageId: ami-0b0dcb5067f052a63
+      ImageId: ami-0d421d84814b7d51c
       InstanceType: t2.micro
       SubnetId: !Ref PrivateSubnet
       SecurityGroupIds:
@@ -92,7 +92,7 @@ Resources:
           Ebs:
             VolumeType: io1
             Iops: 200
-            DeleteOnTermination: false
+            DeleteOnTermination: true
             VolumeSize: 20
       Tags:
         - Key: "Name"
