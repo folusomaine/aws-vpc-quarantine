@@ -15,7 +15,7 @@ Resources:
   PrivateSubnet:
     Type: AWS::EC2::Subnet
     Properties:
-      AvailabilityZone: !Ref "AWS::Region"
+      AvailabilityZone: !Sub "${AWS::Region}a"
       CidrBlock: 192.168.0.0/18
       Tags:
         - Key: "Name"
@@ -25,7 +25,7 @@ Resources:
   PublicSubnet:
     Type: AWS::EC2::Subnet
     Properties:
-      AvailabilityZone: !Ref "AWS::Region"
+      AvailabilityZone: !Sub "${AWS::Region}a"
       CidrBlock: 192.168.64.0/18
       Tags:
         - Key: "Name"
