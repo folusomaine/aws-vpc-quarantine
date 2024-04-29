@@ -52,20 +52,6 @@ Resources:
       InternetGatewayId: !Ref InternetGateway
       VpcId: !Ref QuarantineVPC
 
-  NATGateway:
-    DependsOn: VPCGatewayToInternet
-    Type: AWS::EC2::NatGateway
-    Properties:
-      SubnetId: !Ref PublicSubnet
-
-  PrivateRouteTable:
-    Type: AWS::EC2::RouteTable
-    Properties:
-      Tags:
-        - Key: "Name"
-          Value: "private-route-table"
-      VpcId: !Ref QuarantineVPC
-
   PublicRouteTable:
     Type: AWS::EC2::RouteTable
     Properties:
@@ -73,13 +59,6 @@ Resources:
         - Key: "Name"
           Value: "public-route-table"
       VpcId: !Ref QuarantineVPC
-
-  PrivateRouteToInternet:
-    Type: AWS::EC2::Route
-    Properties:
-      RouteTableId: !Ref PrivateRouteTable
-      DestinationCidrBlock: 0.0.0.0/0
-      GatewayId: !Ref NATGateway
 
   PublicRouteToInternet:
     Type: AWS::EC2::Route
@@ -89,10 +68,10 @@ Resources:
        DestinationCidrBlock: 0.0.0.0/0
        GatewayId: !Ref InternetGateway
 
-  PrivateInstanceSecurityGroup:
+  EC2SecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: "private instance security group"
+      GroupDescription: "private and public instance sg"
       SecurityGroupIngress:
         - CidrIp: 0.0.0.0/0
           Description: "ssh"
@@ -160,6 +139,25 @@ Resources:
        CidrBlock: 0.0.0.0/0
 
   # EC2
+  PublicInstance:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      ImageId: !Ref Ec2ImageID
+      InstanceType: t2.micro
+      SubnetId: !Ref PublicSubnet
+      SecurityGroupIds:
+        - !GetAtt EC2SecurityGroup.GroupId
+      BlockDeviceMappings:
+        - DeviceName: /dev/sdm
+          Ebs:
+            VolumeType: io1
+            Iops: 200
+            DeleteOnTermination: true
+            VolumeSize: 20
+      Tags:
+        - Key: "Name"
+          Value: "public-instance"
+
   PrivateInstance:
     Type: 'AWS::EC2::Instance'
     Properties:
@@ -167,7 +165,7 @@ Resources:
       InstanceType: t2.micro
       SubnetId: !Ref PrivateSubnet
       SecurityGroupIds:
-        - !GetAtt PrivateInstanceSecurityGroup.GroupId
+        - !GetAtt EC2SecurityGroup.GroupId
       BlockDeviceMappings:
         - DeviceName: /dev/sdm
           Ebs:
