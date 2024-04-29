@@ -76,14 +76,15 @@ Resources:
         - CidrIp: 0.0.0.0/0
           Description: "ssh"
           FromPort: 22
-          IpProtocol: -1
+          IpProtocol: tcp
           ToPort: 22
         - CidrIp: 0.0.0.0/0
-          Description: "http"
-          FromPort: 80
-          IpProtocol: -1
-          ToPort: 80
+          Description: "https"
+          FromPort: 443
+          IpProtocol: tcp
+          ToPort: 443
       VpcId: !Ref QuarantineVPC
+      GroupName: ec2-sg
 
   PrivateNaclAssociation:
     Type: AWS::EC2::SubnetNetworkAclAssociation
