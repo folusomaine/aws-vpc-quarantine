@@ -1,1 +1,213 @@
-#
+AWSTemplateFormatVersion: "2010-09-09"
+Description: VPC Quarantine Solution
+
+Parameters:
+  Ec2ImageID:
+    Description: Valid AMI ID
+    Type: String
+  UserDataPath:
+    Description: Path to user data script
+    Type: String
+
+Resources:
+  # VPC
+  QuarantineVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 172.16.1.0/24
+      Tags:
+        - Key: Name
+          Value: QuarantineVPC
+
+  PrivateSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Sub "${AWS::Region}a"
+      CidrBlock: 172.16.1.0/26
+      Tags:
+        - Key: Name
+          Value: private-subnet
+      VpcId: !Ref QuarantineVPC
+
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Sub "${AWS::Region}b"
+      CidrBlock: 172.16.1.64/26
+      Tags:
+        - Key: Name
+          Value: public-subnet
+      VpcId: !Ref QuarantineVPC
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: "Name"
+          Value: "QuarantineVPC-IGW"
+
+  VPCGatewayToInternet:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref QuarantineVPC
+
+  NATGateway:
+    DependsOn: VPCGatewayToInternet
+    Type: AWS::EC2::NatGateway
+    Properties:
+      SubnetId: !Ref PublicSubnet
+
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      Tags:
+        - Key: "Name"
+          Value: "private-route-table"
+      VpcId: !Ref QuarantineVPC
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      Tags:
+        - Key: "Name"
+          Value: "public-route-table"
+      VpcId: !Ref QuarantineVPC
+
+  PrivateRouteToInternet:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref NATGateway
+
+  PublicRouteToInternet:
+    Type: AWS::EC2::Route
+    DependsOn: VPCGatewayToInternet
+    Properties:
+       RouteTableId: !Ref PublicRouteTable
+       DestinationCidrBlock: 0.0.0.0/0
+       GatewayId: !Ref InternetGateway
+
+  PrivateInstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "private instance security group"
+      SecurityGroupIngress:
+        - CidrIp: 0.0.0.0/0
+          Description: "ssh"
+          FromPort: 22
+          IpProtocol: -1
+          ToPort: 22
+        - CidrIp: 0.0.0.0/0
+          Description: "http"
+          FromPort: 80
+          IpProtocol: -1
+          ToPort: 80
+      VpcId: !Ref QuarantineVPC
+
+  PrivateNaclAssociation:
+    Type: AWS::EC2::SubnetNetworkAclAssociation
+    Properties:
+      NetworkAclId: !Ref VPCNetworkAcl
+      SubnetId: !Ref PrivateSubnet
+  PublicNaclAssociation:
+    Type: AWS::EC2::SubnetNetworkAclAssociation
+    Properties:
+      NetworkAclId: !Ref VPCNetworkAcl
+      SubnetId: !Ref PublicSubnet
+
+  VPCNetworkAcl:
+    Type: AWS::EC2::NetworkAcl
+    Properties:
+      VpcId: !Ref QuarantineVPC
+      Tags:
+      - Key: "Name"
+        Value: "private-public-subnet-nacl"
+
+  SSHInboundRule:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+       NetworkAclId: !Ref VPCNetworkAcl
+       RuleNumber: 100
+       Protocol: 6
+       RuleAction: allow
+       CidrBlock: 0.0.0.0/0
+       PortRange:
+         From: 22
+         To: 22
+
+  HTTPInboundRule:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+       NetworkAclId: !Ref VPCNetworkAcl
+       RuleNumber: 200
+       Protocol: 6
+       RuleAction: allow
+       CidrBlock: 0.0.0.0/0
+       PortRange:
+         From: 80
+         To: 80
+
+  OutboundRule:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+       NetworkAclId: !Ref VPCNetworkAcl
+       RuleNumber: 100
+       Protocol: -1
+       Egress: true
+       RuleAction: allow
+       CidrBlock: 0.0.0.0/0
+
+  # EC2
+  PrivateInstance:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      ImageId: !Ref Ec2ImageID
+      InstanceType: t2.micro
+      SubnetId: !Ref PrivateSubnet
+      SecurityGroupIds:
+        - !GetAtt PrivateInstanceSecurityGroup.GroupId
+      BlockDeviceMappings:
+        - DeviceName: /dev/sdm
+          Ebs:
+            VolumeType: io1
+            Iops: 200
+            DeleteOnTermination: true
+            VolumeSize: 20
+      Tags:
+        - Key: "Name"
+          Value: "private-instance"
+      UserData:
+        Fn::Base64:
+          Fn::Join:
+            - ""
+            - - |-
+                #!/bin/bash
+                SCRIPT_PATH=
+              - Ref: UserDataPath
+              - |-
+                wget -O /tmp/script.sh "${SCRIPT_PATH}"
+                chmod +x /tmp/script.sh
+                /tmp/script.sh
+
+  # GuardDuty Event Rule
+    # guarddutyremediationeksrule92B11FBD:
+    # Type: AWS::Events::Rule
+    # Properties:
+    #   Description: "EventBridge Rule to notify and respond to GuardDuty Event: PrivilegeEscalation:Kubernetes/PrivilegedContainer findings."
+    #   EventPattern:
+    #     source:
+    #       - aws.guardduty
+    #     detail:
+    #       type:
+    #         - PrivilegeEscalation:Kubernetes/PrivilegedContainer
+    #         - Execution:Kubernetes/ExecInKubeSystemPod
+    #   Name: GuardDuty-Event-EKS-Cleanup
+    #   State: ENABLED
+    #   Targets:
+    #     - Arn:
+    #         Fn::GetAtt:
+    #           - guarddutyeksremediationfunctionC5E0C831
+    #           - Arn
+    #       Id: Target0

@@ -21,6 +21,9 @@ jobs:
       - name: Deploy stack
         uses: aws-actions/aws-cloudformation-github-deploy@v1
         with:
-          name: cfn-pipeline-deploy
-          template: cfn-deploy.yaml
+          name: QUARANTINE-VPC-SOLUTION
+          template: template.yaml
+          parameter-overrides: >-
+            Ec2ImageID=ami-0d421d84814b7d51c,
+            UserDataPath="/user-data.sh"
           no-fail-on-empty-changeset: "1"
