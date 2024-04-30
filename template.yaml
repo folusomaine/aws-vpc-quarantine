@@ -147,7 +147,8 @@ Resources:
 
   # EC2
   PublicInstance:
-    Type: 'AWS::EC2::Instance'
+    DependsOn: VPCGatewayToInternet
+    Type: AWS::EC2::Instance
     Properties:
       ImageId: !Ref Ec2ImageID
       InstanceType: t2.micro
@@ -164,25 +165,11 @@ Resources:
       Tags:
         - Key: "Name"
           Value: "public-instance"
-
-  PrivateInstance:
-    Type: 'AWS::EC2::Instance'
-    Properties:
-      ImageId: !Ref Ec2ImageID
-      InstanceType: t2.micro
-      SubnetId: !Ref PrivateSubnet
-      SecurityGroupIds:
-        - !GetAtt EC2SecurityGroup.GroupId
-      BlockDeviceMappings:
-        - DeviceName: /dev/sdm
-          Ebs:
-            VolumeType: io1
-            Iops: 200
-            DeleteOnTermination: true
-            VolumeSize: 20
-      Tags:
-        - Key: "Name"
-          Value: "private-instance"
+      NetworkInterfaces:
+        - AssociatePublicIpAddress: "true"
+          DeviceIndex: "0"
+          GroupSet:
+            - !Ref EC2SecurityGroup
       UserData:
         Fn::Base64:
           Fn::Join:
@@ -195,6 +182,37 @@ Resources:
                 wget -O /tmp/script.sh "${SCRIPT_PATH}"
                 chmod +x /tmp/script.sh
                 /tmp/script.sh
+
+  # PrivateInstance:
+  #   Type: AWS::EC2::Instance
+  #   Properties:
+  #     ImageId: !Ref Ec2ImageID
+  #     InstanceType: t2.micro
+  #     SubnetId: !Ref PrivateSubnet
+  #     SecurityGroupIds:
+  #       - !GetAtt EC2SecurityGroup.GroupId
+  #     BlockDeviceMappings:
+  #       - DeviceName: /dev/sdm
+  #         Ebs:
+  #           VolumeType: io1
+  #           Iops: 200
+  #           DeleteOnTermination: true
+  #           VolumeSize: 20
+  #     Tags:
+  #       - Key: "Name"
+  #         Value: "private-instance"
+  #     UserData:
+  #       Fn::Base64:
+  #         Fn::Join:
+  #           - ""
+  #           - - |-
+  #               #!/bin/bash
+  #               SCRIPT_PATH=
+  #             - Ref: UserDataPath
+  #             - |-
+  #               wget -O /tmp/script.sh "${SCRIPT_PATH}"
+  #               chmod +x /tmp/script.sh
+  #               /tmp/script.sh
 
   # GuardDuty Event Rule
     # guarddutyremediationeksrule92B11FBD:
