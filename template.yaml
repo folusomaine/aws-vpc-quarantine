@@ -152,9 +152,8 @@ Resources:
     Properties:
       ImageId: !Ref Ec2ImageID
       InstanceType: t2.micro
-      SubnetId: !Ref PublicSubnet
-      SecurityGroupIds:
-        - !GetAtt EC2SecurityGroup.GroupId
+      # SecurityGroupIds:
+      #   - !GetAtt EC2SecurityGroup.GroupId
       BlockDeviceMappings:
         - DeviceName: /dev/sdm
           Ebs:
