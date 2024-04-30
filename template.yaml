@@ -68,6 +68,12 @@ Resources:
        DestinationCidrBlock: 0.0.0.0/0
        GatewayId: !Ref InternetGateway
 
+  PublicSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet
+
   EC2SecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -126,8 +132,8 @@ Resources:
        RuleAction: allow
        CidrBlock: 0.0.0.0/0
        PortRange:
-         From: 80
-         To: 80
+         From: 443
+         To: 443
 
   OutboundRule:
     Type: AWS::EC2::NetworkAclEntry
