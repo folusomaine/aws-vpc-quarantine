@@ -164,6 +164,10 @@ Resources:
           GroupSet:
             - !GetAtt SecurityGroupIngress.GroupId
           SubnetId: !Ref PublicSubnet
+      UserData:
+        Fn::Base64: |
+          #!/bin/bash
+          dig google.com > /tmp/dig_output.txt
 
   SessionManagerInstanceProfile:
     Type: AWS::IAM::InstanceProfile
