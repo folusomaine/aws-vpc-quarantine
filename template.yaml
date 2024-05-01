@@ -170,8 +170,7 @@ Resources:
   SessionManagerInstanceProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
-    InstanceProfileName: EC2SessionManagerInstanceProfile
-      Path: /
+      InstanceProfileName: EC2SessionManagerInstanceProfile
       Roles:
         - !Ref SessionManagerRole
 
