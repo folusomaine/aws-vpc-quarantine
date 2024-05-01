@@ -18,12 +18,14 @@ jobs:
           aws-secret-access-key: ${{ secrets.SECRET_ACCESS_KEY }}
           aws-region: eu-west-1
 
-      - name: Deploy stack
-        uses: aws-actions/aws-cloudformation-github-deploy@v1
-        with:
-          name: QUARANTINE-VPC-SOLUTION
-          template: template.yaml
-          parameter-overrides: >-
-            Ec2ImageID=ami-0d421d84814b7d51c,
-            UserDataPath="/user-data.sh"
-          no-fail-on-empty-changeset: "1"
+      # - name: Deploy stack
+      #   uses: aws-actions/aws-cloudformation-github-deploy@v1
+      #   with:
+      #     name: QUARANTINE-VPC-SOLUTION
+      #     template: template.yaml
+      #     parameter-overrides: >-
+      #       Ec2ImageID=ami-0d421d84814b7d51c
+      #     no-fail-on-empty-changeset: "1"
+
+      - name: check aws cli version
+        run: aws --version
