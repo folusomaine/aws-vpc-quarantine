@@ -5,9 +5,6 @@ Parameters:
   Ec2ImageID:
     Description: Valid AMI ID
     Type: String
-  UserDataPath:
-    Description: Path to user data script
-    Type: String
 
 Resources:
   # VPC
