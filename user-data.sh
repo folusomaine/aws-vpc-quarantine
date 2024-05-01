@@ -13,5 +13,9 @@
 # dig xmr-eu.dwarfpool.com
 # dig xmr-eu1.nanopool.org
 
-cd /tmp
-dig google.com > /tmp/dig_output.txt
+yum update -y
+yum install httpd -y
+service httpd start
+systemctl enable httpd
+cd /var/www/html
+echo "<html><body><h1>Hello World!</h1><br><h2>I'm a Cloud Developer</h2></body></html>" > index.html
