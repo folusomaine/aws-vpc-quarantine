@@ -1,8 +1,6 @@
 #!/bin/bash
 # Curl DNS domains that are labeled for bitcoin
 
-sleep 10
-
 # CryptoCurrency:EC2/BitcoinTool.B!DNS
 # dig donate.v2.xmrig.com
 # dig systemten.org
