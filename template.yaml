@@ -10,30 +10,31 @@ Parameters:
     Type: String
 
 Resources:
+  # GuardDuty Detector
+  GuardDutyDetector:
+    Type: AWS::GuardDuty::Detector
+    Properties:
+      Enable: True
+      FindingPublishingFrequency: FIFTEEN_MINUTES
 
+  # VPC
   QuarantineVPC:
     Type: AWS::EC2::VPC
     Properties:
       CidrBlock: 172.16.1.0/24
+      # Enable DNS to support Automated
+      # GuardDuty agent confiuration
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
       Tags:
         - Key: Name
           Value: QuarantineVPC
-
-  PrivateSubnet:
-    Type: AWS::EC2::Subnet
-    Properties:
-      AvailabilityZone: !Sub "${AWS::Region}a"
-      CidrBlock: 172.16.1.0/26
-      Tags:
-        - Key: Name
-          Value: private-subnet
-      VpcId: !Ref QuarantineVPC
 
   PublicSubnet:
     Type: AWS::EC2::Subnet
     Properties:
       AvailabilityZone: !Sub "${AWS::Region}b"
-      CidrBlock: 172.16.1.64/26
+      CidrBlock: 172.16.1.0/26
       Tags:
         - Key: Name
           Value: public-subnet
@@ -87,11 +88,6 @@ Resources:
           ToPort: 443
       VpcId: !Ref QuarantineVPC
 
-  PrivateNaclAssociation:
-    Type: AWS::EC2::SubnetNetworkAclAssociation
-    Properties:
-      NetworkAclId: !Ref VPCNetworkAcl
-      SubnetId: !Ref PrivateSubnet
   PublicNaclAssociation:
     Type: AWS::EC2::SubnetNetworkAclAssociation
     Properties:
@@ -106,7 +102,7 @@ Resources:
       - Key: "Name"
         Value: "public-subnet-nacl"
 
-  InboundRule:
+  NaclInboundRule:
     Type: AWS::EC2::NetworkAclEntry
     Properties:
        NetworkAclId: !Ref VPCNetworkAcl
@@ -115,7 +111,7 @@ Resources:
        RuleAction: allow
        CidrBlock: 0.0.0.0/0
 
-  OutboundRule:
+  NaclOutboundRule:
     Type: AWS::EC2::NetworkAclEntry
     Properties:
        NetworkAclId: !Ref VPCNetworkAcl
