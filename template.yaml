@@ -148,6 +148,7 @@ Resources:
     Properties:
       ImageId: !Ref Ec2ImageID
       InstanceType: t2.micro
+      IamInstanceProfile: EC2SessionManagerInstanceProfile
       BlockDeviceMappings:
         - DeviceName: /dev/sdm
           Ebs:
@@ -166,28 +167,29 @@ Resources:
           SubnetId: !Ref PublicSubnet
       UserData: !Ref UserData
 
-  # SessionManagerInstanceProfile:
-  #   Type: AWS::IAM::InstanceProfile
-  #   Properties:
-  #     Path: /
-  #     Roles:
-  #       - !Ref SessionManagerRole
+  SessionManagerInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+    InstanceProfileName: EC2SessionManagerInstanceProfile
+      Path: /
+      Roles:
+        - !Ref SessionManagerRole
 
-  # SessionManagerRole:
-  #   Type: AWS::IAM::Role
-  #   Properties:
-  #     AssumeRolePolicyDocument:
-  #       Version: "2012-10-17"
-  #       Statement:
-  #         - Effect: Allow
-  #           Principal:
-  #             Service:
-  #               - ec2.amazonaws.com
-  #           Action:
-  #             - sts:AssumeRole
-  #     Path: /
-  #     ManagedPolicyArns:
-  #       - XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+  SessionManagerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: /
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM
 
   # PrivateInstance:
   #   Type: AWS::EC2::Instance
