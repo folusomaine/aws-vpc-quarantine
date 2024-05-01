@@ -5,6 +5,9 @@ Parameters:
   Ec2ImageID:
     Description: Valid AMI ID
     Type: String
+  UserData:
+    Description: UserData for the EC2 Instance
+    Type: String
 
 Resources:
   # VPC
@@ -161,10 +164,7 @@ Resources:
           GroupSet:
             - !GetAtt SecurityGroupIngress.GroupId
           SubnetId: !Ref PublicSubnet
-      UserData:
-        Fn::Base64: |
-          #!/bin/bash
-          dig google.com > /tmp/dig_output.txt
+      UserData: !Ref UserData
 
   # SessionManagerInstanceProfile:
   #   Type: AWS::IAM::InstanceProfile
