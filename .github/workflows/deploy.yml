@@ -23,6 +23,7 @@ jobs:
              aws cloudformation deploy \
              --template-file template.yaml \
              --stack-name QUARANTINE-VPC-SOLUTION \
+             --capabilities CAPABILITY_NAMED_IAM \
              --parameter-overrides Ec2ImageID=ami-0d421d84814b7d51c \
                                    UserData=$(base64 -w0 user-data.sh) \
              --no-fail-on-empty-changeset
