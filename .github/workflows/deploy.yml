@@ -18,24 +18,24 @@ jobs:
           aws-secret-access-key: ${{ secrets.SECRET_ACCESS_KEY }}
           aws-region: eu-west-1
 
-      - name: Deploy stack
-        uses: aws-actions/aws-cloudformation-github-deploy@v1
-        with:
-          name: QUARANTINE-VPC-SOLUTION
-          template: template.yaml
-          parameter-overrides: >-
-            Ec2ImageID=ami-0d421d84814b7d51c,
-            UserData=$(base64 -w0 user-data.sh)
-          no-fail-on-empty-changeset: "1"
-
       # - name: Deploy stack
-      #   run: |
-      #        aws cloudformation deploy \
-      #        --template-file template.yaml \
-      #        --stack-name QUARANTINE-VPC-SOLUTION \
-      #        --parameter-overrides Ec2ImageID=ami-0d421d84814b7d51c \
-      #          UserData=$(base64 -w0 user-data.sh) \
-      #        --no-fail-on-empty-changeset
+      #   uses: aws-actions/aws-cloudformation-github-deploy@v1
+      #   with:
+      #     name: QUARANTINE-VPC-SOLUTION
+      #     template: template.yaml
+      #     parameter-overrides: >-
+      #       Ec2ImageID=ami-0d421d84814b7d51c,
+      #       UserData=$(base64 -w0 user-data.sh)
+      #     no-fail-on-empty-changeset: "1"
+
+      - name: Deploy stack
+        run: |
+             aws cloudformation deploy \
+             --template-file template.yaml \
+             --stack-name QUARANTINE-VPC-SOLUTION \
+             --parameter-overrides Ec2ImageID=ami-0d421d84814b7d51c \
+               UserData=$(base64 -w0 user-data.sh) \
+             --no-fail-on-empty-changeset
 
       - name: check aws cli version
         run: |
