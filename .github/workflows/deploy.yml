@@ -30,4 +30,4 @@ jobs:
       - name: check aws cli version
         run: |
              aws --version
-             ./command.sh
+             bash command.sh
