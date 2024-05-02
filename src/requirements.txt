@@ -1,1 +1,1 @@
-boto3==1.34.96
+aws-lambda-logging==0.1.1

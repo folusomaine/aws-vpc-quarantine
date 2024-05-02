@@ -18,13 +18,15 @@ jobs:
           aws-secret-access-key: ${{ secrets.SECRET_ACCESS_KEY }}
           aws-region: eu-west-1
 
-      - name: Install dependencies
+      - name: Build and package lambda function
         run: |
+          echo "Cleaning build directory and move src into build"
+          rm -rf build && mkdir build && mv src/* build && cd build
+          pwd
           python3 -m pip install --upgrade pip
-          sudo pip install -r src/requirements.txt -t /src
-
-      - name: Zip Lambda function code
-        run: zip -r quarantine.zip /src
+          sudo pip install -r requirements.txt -t .
+          zip -r quarantine.zip .
+          ls
 
       - name: Create s3 bucket if it doesn't exist
         run: |
@@ -36,8 +38,12 @@ jobs:
           aws s3api head-bucket --bucket ${bucket_name} || \
           aws s3 mb s3://$bucket_name/ --region eu-west-1
 
-      - name: Upload Lambda function code to S3
-        run: aws s3 cp quarantine.zip s3://${bucket_name}/quarantine.zip
+      - name: Upload Lambda function package to S3
+        run: |
+          echo "Uploading Lambda function code to S3"
+          ls build
+          aws s3 cp build/quarantine.zip s3://${bucket_name}/quarantine.zip
+
       - name: Deploy stack
         run: |
           aws cloudformation deploy \

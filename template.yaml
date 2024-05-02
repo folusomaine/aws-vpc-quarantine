@@ -174,7 +174,7 @@ Resources:
     Type: AWS::Events::Rule
     Properties:
       Description: "Pick up GuardDuty Findings and invoke the Quarantine Lambda"
-      Name: GuardDuty-Finding-Event
+      Name: GuardDuty-Findings-Event
       State: ENABLED
       EventPattern:
         source:
@@ -237,15 +237,14 @@ Resources:
             Action:
               - sts:AssumeRole
       Path: /
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/AmazonEC2FullAccess
-      # Policies:
-      #   - PolicyName: SSMParameterAccess
-      #     PolicyDocument:
-      #       Version: "2012-10-17"
-      #       Statement:
-      #         - Effect: Allow
-      #           Action:
-      #             - logs:PutLogEvents
-      #           Resource:
-      #             - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group/VPCQuarantineLambda/*"
+      Policies:
+        - PolicyName: QuarantineLambdaPermissions
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:PutLogEvents
+                  - logs:CreateLogStream
+                  - logs:CreateLogGroup
+                Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${QuarantineLambda}:*"
