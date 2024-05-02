@@ -28,8 +28,9 @@ jobs:
 
       - name: Create s3 bucket if it doesn't exist
         run: |
-          account_id=$(aws sts get-caller-identity --query Account)
+          account_id=$(aws sts get-caller-identity --query Account --output text)
           bucket_name="${account_id}-vpc-quarantine-solution"
+          echo "Creating bucket ${bucket_name}"
           aws s3api head-bucket --bucket ${bucket_name} || \
           aws s3 mb s3://${bucket_name}/ --region eu-west-1
 
