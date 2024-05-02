@@ -35,7 +35,7 @@ jobs:
           aws s3 mb s3://${bucket_name}/ --region eu-west-1
 
       - name: Upload Lambda function code to S3
-        run: aws s3 cp quarantine.zip s3://${bucket_name}/
+        run: aws s3 cp quarantine.zip s3://${bucket_name}/quarantine.zip
       - name: Deploy stack
         run: |
           aws cloudformation deploy \
