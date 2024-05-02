@@ -30,9 +30,11 @@ jobs:
         run: |
           account_id=$(aws sts get-caller-identity --query Account --output text)
           bucket_name="${account_id}-vpc-quarantine-solution"
-          echo "Creating bucket ${bucket_name}"
+
+          echo "bucket_name=$bucket_name" >> $GITHUB_ENV
+
           aws s3api head-bucket --bucket ${bucket_name} || \
-          aws s3 mb s3://${bucket_name}/ --region eu-west-1
+          aws s3 mb s3://$bucket_name/ --region eu-west-1
 
       - name: Upload Lambda function code to S3
         run: aws s3 cp quarantine.zip s3://${bucket_name}/quarantine.zip
@@ -44,6 +46,6 @@ jobs:
           --capabilities CAPABILITY_NAMED_IAM \
           --parameter-overrides Ec2ImageID=ami-0d421d84814b7d51c \
                                 UserData=$(base64 -w0 user-data.sh) \
-                                S3BucketName=${bucket_name} \
+                                S3BucketName=$bucket_name \
                                 S3Key=quarantine.zip \
           --no-fail-on-empty-changeset
