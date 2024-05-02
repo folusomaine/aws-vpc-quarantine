@@ -40,7 +40,6 @@ jobs:
 
       - name: Upload Lambda function package to S3
         run: |
-          echo "Uploading Lambda function code to S3"
           ls build
           aws s3 cp build/quarantine.zip s3://${bucket_name}/quarantine.zip
 
