@@ -1,7 +1,7 @@
 import json
 from aws_lambda_powertools.logging import Logger
 
-logger = Logger(level="INFO")
+logger = Logger()
 
 def lambda_handler(event, context):
     # TODO implement
