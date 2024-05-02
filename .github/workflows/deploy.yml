@@ -20,8 +20,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install --upgrade pip
-          pip install -r src/requirements.txt -t /src
+          python3 -m pip install --upgrade pip
+          sudo pip install -r src/requirements.txt -t /src
 
       - name: Zip Lambda function code
         run: zip -r quarantine.zip /src
