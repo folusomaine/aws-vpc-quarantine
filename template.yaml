@@ -10,13 +10,6 @@ Parameters:
     Type: String
 
 Resources:
-  # GuardDuty Detector
-  GuardDutyDetector:
-    Type: AWS::GuardDuty::Detector
-    Properties:
-      Enable: True
-      FindingPublishingFrequency: FIFTEEN_MINUTES
-
   # VPC
   QuarantineVPC:
     Type: AWS::EC2::VPC
