@@ -8,6 +8,12 @@ Parameters:
   UserData:
     Description: UserData for the EC2 Instance
     Type: String
+  S3BucketName:
+    Description: S3 Bucket Name for the Quarantine Lambda Function
+    Type: String
+  S3Key:
+    Description: Lambda code file zip
+    Type: String
 
 Resources:
   # VPC
@@ -26,7 +32,7 @@ Resources:
   PublicSubnet:
     Type: AWS::EC2::Subnet
     Properties:
-      AvailabilityZone: !Sub "${AWS::Region}b"
+      AvailabilityZone: !Sub "${AWS::Region}a"
       CidrBlock: 172.16.1.0/26
       Tags:
         - Key: Name
@@ -163,24 +169,84 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM
 
-
   # GuardDuty Event Rule
-    # guarddutyremediationeksrule92B11FBD:
-    # Type: AWS::Events::Rule
-    # Properties:
-    #   Description: "EventBridge Rule to notify and respond to GuardDuty Event: PrivilegeEscalation:Kubernetes/PrivilegedContainer findings."
-    #   EventPattern:
-    #     source:
-    #       - aws.guardduty
-    #     detail:
-    #       type:
-    #         - PrivilegeEscalation:Kubernetes/PrivilegedContainer
-    #         - Execution:Kubernetes/ExecInKubeSystemPod
-    #   Name: GuardDuty-Event-EKS-Cleanup
-    #   State: ENABLED
-    #   Targets:
-    #     - Arn:
-    #         Fn::GetAtt:
-    #           - guarddutyeksremediationfunctionC5E0C831
-    #           - Arn
-    #       Id: Target0
+  GuardDutyFindingsEventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: GuardDuty-Finding-Event
+      Description: "Pick up GuardDuty Findings and invoke the Quarantine Lambda"
+      State: ENABLED
+      EventPattern:
+        source:
+          - aws.guardduty
+        detail-type:
+          - GuardDuty Finding
+        detail:
+          resource:
+            resourceType:
+              - Instance
+      Targets:
+        - Arn:
+            !GetAtt QuarantineLambda.Arn
+          Id: QuarantineLambda
+
+  # Lambda
+  QuarantineLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: QuarantineLambda
+      Description: Respond to GuardDuty Findings event and quarantine the related VPC
+      Code:
+        S3Bucket: !Ref S3BucketName
+        S3Key: !Ref S3Key
+      Handler: quarantine.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: python3.9
+      Layers:
+        - !Sub arn:aws:lambda:${AWS::Region}:017000801446:layer:AWSLambdaPowertoolsPythonV2:20
+      Environment:
+        Variables:
+          POWERTOOLS_SERVICE_NAME: VPC Quarantine Solution
+          POWERTOOLS_LOG_LEVEL: INFO
+          POWERTOOLS_TRACE_DISABLED: true
+
+  LambdaInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt QuarantineLambda.Arn
+      Action: 'lambda:InvokeFunction'
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt GuardDutyFindingsEventRule.Arn
+
+  LambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${QuarantineLambda}"
+
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+    RoleName: QuarantineLambdaExecutionRole
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: /
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonEC2FullAccess
+      # Policies:
+      #   - PolicyName: SSMParameterAccess
+      #     PolicyDocument:
+      #       Version: "2012-10-17"
+      #       Statement:
+      #         - Effect: Allow
+      #           Action:
+      #             - logs:PutLogEvents
+      #           Resource:
+      #             - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group/VPCQuarantineLambda/*"

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Curl DNS domains that are labeled for bitcoin
+# Curl malicious DNS domains that are labeled for bitcoin
 
 # CryptoCurrency:EC2/BitcoinTool.B!DNS
 dig donate.v2.xmrig.com
