@@ -20,14 +20,14 @@ jobs:
 
       - name: Build and package lambda function
         run: |
-          echo "Cleaning build directory and move src into build"
+          echo ">>> Clean build directory and move src into build"
           rm -rf build && mkdir build && mv src/* build && cd build
 
-          echo "Installing requirements"
+          echo ">>> Installing requirements..."
           python3 -m pip install --upgrade pip
           sudo pip install -r requirements.txt -t .
 
-          echo "Packaging lambda function"
+          echo ">>> Packaging lambda function..."
           zip -r quarantine.zip .
 
       - name: Create s3 bucket if it doesn't exist
@@ -37,11 +37,11 @@ jobs:
 
           echo "bucket_name=$bucket_name" >> $GITHUB_ENV
 
-          aws s3api head-bucket --bucket ${bucket_name} || \
+          aws s3api head-bucket --bucket $bucket_name || \
           aws s3 mb s3://$bucket_name/ --region eu-west-1
 
       - name: Upload Lambda function package to S3
-        run: aws s3 cp build/quarantine.zip s3://${bucket_name}/quarantine.zip
+        run: aws s3 cp build/quarantine.zip s3://$bucket_name/quarantine.zip
 
       - name: Deploy stack
         run: |
