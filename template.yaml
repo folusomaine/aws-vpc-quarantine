@@ -209,14 +209,13 @@ Resources:
       Handler: quarantine.lambda_handler
       Role: !GetAtt LambdaExecutionRole.Arn
       Runtime: python3.9
-      Timeout: 300
+      Timeout: 60
       Layers:
         - !Sub arn:aws:lambda:${AWS::Region}:017000801446:layer:AWSLambdaPowertoolsPythonV2:20
       Environment:
         Variables:
           POWERTOOLS_SERVICE_NAME: VPC Quarantine Solution
           POWERTOOLS_LOG_LEVEL: INFO
-          POWERTOOLS_TRACE_DISABLED: true
 
   LambdaLogGroup:
     Type: AWS::Logs::LogGroup
@@ -259,20 +258,7 @@ Resources:
             Effect: Allow
             Action:
               - ec2:CreateNetworkAcl
-              - ec2:CreateNetworkAclEntry
-              - ec2:DeleteNetworkAcl
-              - ec2:DeleteNetworkAclEntry
               - ec2:DescribeNetworkAcls
               - ec2:ReplaceNetworkAclAssociation
+              - ec2:CreateTags
             Resource: "*"
-
-Outputs:
-  QuarantineVPC:
-    Description: Quarantine VPC ID
-    Value: !Ref QuarantineVPC
-  PublicSubnet:
-    Description: Public Subnet ID
-    Value: !Ref PublicSubnet
-  PublicNaclAssociation:
-    Description: Public Nacl Association ID
-    Value: !Ref PublicNaclAssociation

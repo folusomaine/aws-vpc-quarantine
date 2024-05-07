@@ -12,44 +12,54 @@ def lambda_handler(event, context):
 
 class QuarantineHandler:
     def __init__(self, event) -> None:
-        self.instance_id = event['detail']['resource']['instanceDetails']['instanceId']
-        self.vpc_id = event['detail']['resource']['instanceDetails']['networkInterfaces'][0]['vpcId']
-        self.subnet_id = event['detail']['resource']['instanceDetails']['networkInterfaces'][0]['subnetId']
-        self.region = event['region']
+        self.instance_id = event["detail"]["resource"]["instanceDetails"]["instanceId"]
+        self.vpc_id = event["detail"]["resource"]["instanceDetails"][
+            "networkInterfaces"
+        ][0]["vpcId"]
+        self.subnet_id = event["detail"]["resource"]["instanceDetails"][
+            "networkInterfaces"
+        ][0]["subnetId"]
+        self.region = event["region"]
+        self.ec2_client = boto3.client("ec2", region_name=self.region)
 
-        self.ec2_client = boto3.client('ec2', region_name=self.region)
-
-
-    def _get_subnet_nacl_association_id(self):
+    @property
+    def current_subnet_nacl_association_id(self):
         """
         Get the current association id for the subnet
         """
         response = self.ec2_client.describe_network_acls(
             Filters=[
                 {
-                    'Name': 'association.subnet-id',
-                    'Values': [
+                    "Name": "association.subnet-id",
+                    "Values": [
                         self.subnet_id,
-                    ]
+                    ],
                 },
             ]
         )
-        logger.info(f"Association created for subnet: {response}")
-        self.current_nacl_association_id = response['NetworkAcl']['Associations'][0]['NetworkAclAssociationId']
-        return
+        return response["NetworkAcls"][0]["Associations"][0]["NetworkAclAssociationId"]
 
-
-    def _associate_quarantine_nacl_with_subnet(self):
+    def _if_quarantine_nacl_association_exists(self):
         """
-        Associate the quarantine nacl with the subnet
+        Check if the quarantine nacl exists
         """
-        response = self.ec2_client.replace_network_acl_association(
-            AssociationId=self.current_nacl_association_id,
-            NetworkAclId=self.quarantine_nacl_id
-        )
-        logger.info(f"Quarantine nacl associated with subnet successfully. Response: {response}")
-        return
-
+        try:
+            response = self.ec2_client.describe_network_acls(
+                Filters=[
+                    {
+                        "Name": "tag:Name",
+                        "Values": [
+                            "quarantine-nacl",
+                        ],
+                    },
+                ]
+            )
+            if response["NetworkAcls"][0]["Associations"][0]["SubnetId"] == self.subnet_id:
+                logger.info("Quarantine nacl already enforced.")
+                return True
+        except (KeyError, IndexError) as e:
+            logger.info(f"Quarantine nacl does not exist. Proceed with VPC subnet Quarantine.")
+            return False
 
     def _create_quarantine_nacl(self):
         """
@@ -59,60 +69,38 @@ class QuarantineHandler:
             VpcId=self.vpc_id,
             TagSpecifications=[
                 {
-                    'ResourceType': 'network-acl',
-                    'Tags': [
-                        {
-                            'Key': 'Name',
-                            'Value': 'quarantine-nacl'
-                        },
-                    ]
+                    "ResourceType": "network-acl",
+                    "Tags": [
+                        {"Key": "Name", "Value": "quarantine-nacl"},
+                    ],
                 },
-            ]
+            ],
         )
         logger.info(f"Quarantine nacl created. Response: {response}")
-        self.quarantine_nacl_id = response['NetworkAcl']['NetworkAclId']
+        self.quarantine_nacl_id = response["NetworkAcl"]["NetworkAclId"]
         return
 
-
-    def _create_nacl_entry(self):
+    def _associate_quarantine_nacl_with_subnet(self):
         """
-        Create the nacl entry
+        Associate the quarantine nacl with the subnet
         """
-        response = self.ec2_client.create_network_acl_entry(
-            CidrBlock='0.0.0.0/0',
-            Egress=False,
+        response = self.ec2_client.replace_network_acl_association(
+            AssociationId=self.current_subnet_nacl_association_id,
             NetworkAclId=self.quarantine_nacl_id,
-            Protocol='-1',
-            RuleAction='deny',
-            RuleNumber=100
         )
-        logger.info(f"Ingress nacl created. Response: {response}")
-        return
-
-
-    def _create_nacl_egress_entry(self):
-        """
-        Create the nacl egress entry
-        """
-        response = self.ec2_client.create_network_acl_entry(
-            CidrBlock='0.0.0.0/0',
-            Egress=True,
-            NetworkAclId=self.quarantine_nacl_id,
-            Protocol='-1',
-            RuleAction='deny',
-            RuleNumber=100
+        logger.info(
+            f"Quarantine nacl associated with subnet successfully. Response: {response}"
         )
-        logger.info(f"Egress nacl created. Response: {response}")
         return
-
 
     def quarantine_vpc(self):
         """
         Quarantine the vpc
         """
-        logger.info(f"Indication of compromise - instance: {self.instance_id} in {self.subnet_id}")
-        logger.info(f"Quarantining vpc: {self.vpc_id}")
+        logger.info(
+            f"Indication of compromise - instance: {self.instance_id} in {self.subnet_id}. Quarantining vpc: {self.vpc_id}"
+        )
+        if self._if_quarantine_nacl_association_exists():
+            return
         self._create_quarantine_nacl()
-        self._create_nacl_entry()
-        self._create_nacl_egress_entry()
         self._associate_quarantine_nacl_with_subnet()
