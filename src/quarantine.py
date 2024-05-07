@@ -4,6 +4,16 @@ from aws_lambda_powertools.logging import Logger
 
 logger = Logger()
 
+
+def lambda_handler(event, context):
+    logger.info(event)
+    handler = QuarantineHandler(event)
+    handler.quarantine_vpc()
+    return {
+        'statusCode': 200
+    }
+
+
 class QuarantineHandler:
     def __init__(self, event) -> None:
         self.instance_id = event.get('message').get('detail').get('resource').get('instanceDetails').get('instanceId')
@@ -108,12 +118,3 @@ class QuarantineHandler:
         self._create_nacl_egress_entry()
         self._associate_quarantine_nacl_with_subnet()
         return
-
-
-def lambda_handler(event, context):
-    logger.info(event)
-    handler = QuarantineHandler(event)
-    handler.quarantine_vpc()
-    return {
-        'statusCode': 200
-    }
