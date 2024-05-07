@@ -23,7 +23,7 @@ jobs:
           echo ">>> Clean build directory and move src into build"
           rm -rf build && mkdir build && mv src/* build && cd build
 
-          echo ">>> Installing requirements..."
+          echo ">>> Installing dependencies..."
           python3 -m pip install --upgrade pip
           sudo pip install -r requirements.txt -t .
 

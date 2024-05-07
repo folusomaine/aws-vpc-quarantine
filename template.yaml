@@ -87,12 +87,6 @@ Resources:
           ToPort: 443
       VpcId: !Ref QuarantineVPC
 
-  PublicNaclAssociation:
-    Type: AWS::EC2::SubnetNetworkAclAssociation
-    Properties:
-      NetworkAclId: !Ref VPCNetworkAcl
-      SubnetId: !Ref PublicSubnet
-
   VPCNetworkAcl:
     Type: AWS::EC2::NetworkAcl
     Properties:
@@ -100,6 +94,12 @@ Resources:
       Tags:
       - Key: "Name"
         Value: "public-subnet-nacl"
+
+  PublicNaclAssociation:
+    Type: AWS::EC2::SubnetNetworkAclAssociation
+    Properties:
+      NetworkAclId: !Ref VPCNetworkAcl
+      SubnetId: !Ref PublicSubnet
 
   NaclInboundRule:
     Type: AWS::EC2::NetworkAclEntry
@@ -253,3 +253,14 @@ Resources:
               - logs:CreateLogStream
               - logs:CreateLogGroup
             Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${QuarantineLambda}:*"
+
+Outputs:
+  QuarantineVPC:
+    Description: Quarantine VPC ID
+    Value: !Ref QuarantineVPC
+  PublicSubnet:
+    Description: Public Subnet ID
+    Value: !Ref PublicSubnet
+  PublicNaclAssociation:
+    Description: Public Nacl Association ID
+    Value: !Ref PublicNaclAssociation
