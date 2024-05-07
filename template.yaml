@@ -247,12 +247,23 @@ Resources:
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
-          - Effect: Allow
+          - Sid: EnableLogging
+            Effect: Allow
             Action:
               - logs:PutLogEvents
               - logs:CreateLogStream
               - logs:CreateLogGroup
             Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${QuarantineLambda}:*"
+          - Sid: EnableEc2NaclActions
+            Effect: Allow
+            Action:
+              - ec2:CreateNetworkAcl
+              - ec2:CreateNetworkAclEntry
+              - ec2:DeleteNetworkAcl
+              - ec2:DeleteNetworkAclEntry
+              - ec2:DescribeNetworkAcls
+              - ec2:ReplaceNetworkAclAssociation
+            Resource: "*"
 
 Outputs:
   QuarantineVPC:

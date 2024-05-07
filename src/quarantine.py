@@ -1,4 +1,3 @@
-import json
 import boto3
 from aws_lambda_powertools.logging import Logger
 
@@ -16,11 +15,13 @@ def lambda_handler(event, context):
 
 class QuarantineHandler:
     def __init__(self, event) -> None:
-        self.instance_id = event.get('message').get('detail').get('resource').get('instanceDetails').get('instanceId')
-        self.vpc_id = event.get('message').get('detail').get('resource').get('instanceDetails').get('networkInterfaces')[0].get('vpcId')
-        self.subnet_id = event.get('message').get('detail').get('resource').get('instanceDetails').get('networkInterfaces')[0].get('subnetId')
+        self.instance_id = event['message']['detail']['resource']['instanceDetails']['instanceId']
+        self.vpc_id = event['message']['detail']['resource']['instanceDetails']['networkInterfaces'][0]['vpcId']
+        self.subnet_id = event['message']['detail']['resource']['instanceDetails']['networkInterfaces'][0]['subnetId']
+        self.region = event['message']['region']
 
-        self.ec2_client = boto3.client('ec2')
+        self.ec2_client = boto3.client('ec2', region_name=self.region)
+
 
     def _get_subnet_nacl_association_id(self):
         """
@@ -111,7 +112,7 @@ class QuarantineHandler:
         """
         Quarantine the vpc
         """
-        logger.info(f"Indication of compromise in instance: {self.instance_id} in subnet {self.subnet_id}")
+        logger.info(f"Indication of compromise - instance: {self.instance_id} in subnet {self.subnet_id}")
         logger.info(f"Quarantining vpc: {self.vpc_id}")
         self._create_quarantine_nacl()
         self._create_nacl_entry()
