@@ -209,6 +209,7 @@ Resources:
       Handler: quarantine.lambda_handler
       Role: !GetAtt LambdaExecutionRole.Arn
       Runtime: python3.9
+      Timeout: 300
       Layers:
         - !Sub arn:aws:lambda:${AWS::Region}:017000801446:layer:AWSLambdaPowertoolsPythonV2:20
       Environment:

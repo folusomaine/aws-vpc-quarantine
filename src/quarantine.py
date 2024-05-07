@@ -8,17 +8,14 @@ def lambda_handler(event, context):
     logger.info(event)
     handler = QuarantineHandler(event)
     handler.quarantine_vpc()
-    return {
-        'statusCode': 200
-    }
 
 
 class QuarantineHandler:
     def __init__(self, event) -> None:
-        self.instance_id = event['message']['detail']['resource']['instanceDetails']['instanceId']
-        self.vpc_id = event['message']['detail']['resource']['instanceDetails']['networkInterfaces'][0]['vpcId']
-        self.subnet_id = event['message']['detail']['resource']['instanceDetails']['networkInterfaces'][0]['subnetId']
-        self.region = event['message']['region']
+        self.instance_id = event['detail']['resource']['instanceDetails']['instanceId']
+        self.vpc_id = event['detail']['resource']['instanceDetails']['networkInterfaces'][0]['vpcId']
+        self.subnet_id = event['detail']['resource']['instanceDetails']['networkInterfaces'][0]['subnetId']
+        self.region = event['region']
 
         self.ec2_client = boto3.client('ec2', region_name=self.region)
 
@@ -37,7 +34,8 @@ class QuarantineHandler:
                 },
             ]
         )
-        self.current_nacl_association_id = response.get('NetworkAcls')[0].get('Associations')[0].get('NetworkAclAssociationId')
+        logger.info(f"Association created for subnet: {response}")
+        self.current_nacl_association_id = response['NetworkAcl']['Associations'][0]['NetworkAclAssociationId']
         return
 
 
@@ -45,7 +43,6 @@ class QuarantineHandler:
         """
         Associate the quarantine nacl with the subnet
         """
-        self._get_subnet_nacl_data()
         response = self.ec2_client.replace_network_acl_association(
             AssociationId=self.current_nacl_association_id,
             NetworkAclId=self.quarantine_nacl_id
@@ -72,7 +69,8 @@ class QuarantineHandler:
                 },
             ]
         )
-        self.quarantine_nacl_id = response.get('NetworkAcl').get('Associations')[0].get('NetworkAclId')
+        logger.info(f"Quarantine nacl created. Response: {response}")
+        self.quarantine_nacl_id = response['NetworkAcl']['NetworkAclId']
         return
 
 
@@ -112,10 +110,9 @@ class QuarantineHandler:
         """
         Quarantine the vpc
         """
-        logger.info(f"Indication of compromise - instance: {self.instance_id} in subnet {self.subnet_id}")
+        logger.info(f"Indication of compromise - instance: {self.instance_id} in {self.subnet_id}")
         logger.info(f"Quarantining vpc: {self.vpc_id}")
         self._create_quarantine_nacl()
         self._create_nacl_entry()
         self._create_nacl_egress_entry()
         self._associate_quarantine_nacl_with_subnet()
-        return
