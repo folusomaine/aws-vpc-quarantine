@@ -19,8 +19,7 @@ class QuarantineHandler:
 
         self.ec2_client = boto3.client("ec2", region_name=self.region)
 
-    @property
-    def current_subnet_nacl_association_id(self):
+    def _get_current_subnet_nacl_association_id(self) -> str:
         """
         Get the current association id for the subnet
         """
@@ -34,9 +33,10 @@ class QuarantineHandler:
                 },
             ]
         )
-        return response["NetworkAcls"][0]["Associations"][0]["NetworkAclAssociationId"]
+        self.current_subnet_nacl_association_id = response["NetworkAcls"][0]["Associations"][0]["NetworkAclAssociationId"]
+        return
 
-    def _quarantine_nacl_association_exists(self):
+    def _quarantine_nacl_association_exists(self) -> bool:
         """
         Check if the quarantine nacl exists
         """
@@ -84,6 +84,8 @@ class QuarantineHandler:
         """
         Associate the quarantine nacl with the subnet
         """
+        self._get_current_subnet_nacl_association_id()
+
         response = self.ec2_client.replace_network_acl_association(
             AssociationId=self.current_subnet_nacl_association_id,
             NetworkAclId=self.quarantine_nacl_id,
