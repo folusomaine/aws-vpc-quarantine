@@ -1,5 +1,6 @@
 # aws-vpc-quarantine
 A simple AWS VPC Quarantine solution.  
+  
 This solution automates the deployment of resources that simulates the automatic lockdown of a VPC subnet when a malicious activity is detected.  
 See link [here](https://hashnode.com/draft/65fd75caa9f31955f1578f63) to the related blog post.
 
