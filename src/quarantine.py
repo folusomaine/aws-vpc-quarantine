@@ -19,7 +19,7 @@ class QuarantineHandler:
 
         self.ec2_client = boto3.client("ec2", region_name=self.region)
 
-    def _get_current_subnet_nacl_association_id(self) -> str:
+    def _get_current_subnet_nacl_association_id(self):
         """
         Get the current association id for the subnet
         """
@@ -33,7 +33,8 @@ class QuarantineHandler:
                 },
             ]
         )
-        self.current_subnet_nacl_association_id = response["NetworkAcls"][0]["Associations"][0]["NetworkAclAssociationId"]
+        self.current_subnet_nacl_association_id = \
+            response["NetworkAcls"][0]["Associations"][0]["NetworkAclAssociationId"]
         return
 
     def _quarantine_nacl_association_exists(self) -> bool:
@@ -55,7 +56,7 @@ class QuarantineHandler:
                 logger.info("Quarantine nacl already enforced - End execution.")
                 return True
         except (KeyError, IndexError):
-            logger.info(f"Quarantine nacl does not exist - proceed with VPC subnet Quarantine.")
+            logger.info(f"Quarantine nacl association does not exist - proceed with VPC subnet Quarantine.")
             return False
 
     def _create_quarantine_nacl(self):

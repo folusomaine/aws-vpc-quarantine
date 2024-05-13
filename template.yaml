@@ -3,7 +3,7 @@ Description: VPC Quarantine Solution
 
 Parameters:
   Ec2ImageID:
-    Description: Valid AMI ID
+    Description: Valid AMI ID passed from the pipeline
     Type: String
   UserData:
     Description: UserData for the EC2 Instance
@@ -16,13 +16,18 @@ Parameters:
     Type: String
 
 Resources:
+  GuardDutyDetector:
+    Type: AWS::GuardDuty::Detector
+    Properties:
+        Enable: True
+        FindingPublishingFrequency: FIFTEEN_MINUTES
   # VPC
   QuarantineVPC:
     Type: AWS::EC2::VPC
     Properties:
       CidrBlock: 172.16.1.0/24
       # Enable DNS to support Automated
-      # GuardDuty agent confiuration
+      # GuardDuty agent configuration
       EnableDnsHostnames: true
       EnableDnsSupport: true
       Tags:
@@ -85,6 +90,11 @@ Resources:
           FromPort: 443
           IpProtocol: tcp
           ToPort: 443
+        - CidrIp: 0.0.0.0/0
+          Description: "http"
+          FromPort: 80
+          IpProtocol: tcp
+          ToPort: 80
       VpcId: !Ref QuarantineVPC
 
   VPCNetworkAcl:
@@ -262,3 +272,8 @@ Resources:
               - ec2:ReplaceNetworkAclAssociation
               - ec2:CreateTags
             Resource: "*"
+
+Outputs:
+  InstancePublicIP:
+    Description: Public IP address of the EC2 Instance
+    Value: !GetAtt PublicInstance.PublicIp
