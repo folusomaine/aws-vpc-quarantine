@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Sample webpage to confirm access to public ec2 instance
-# http://<your-ec2-public-ip> to access the webpage
+# Go to http://<your-ec2-public-ip> to access the webpage
 yum update -y
 yum install httpd -y
 service httpd start

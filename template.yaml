@@ -16,6 +16,7 @@ Parameters:
     Type: String
 
 Resources:
+  # GuardDuty
   GuardDutyDetector:
     Type: AWS::GuardDuty::Detector
     Properties:
@@ -83,11 +84,6 @@ Resources:
       GroupDescription: "allow ssm traffic"
       GroupName: "ec2-ingress"
       SecurityGroupIngress:
-        # - CidrIp: 0.0.0.0/0
-        #   Description: "https"
-        #   FromPort: 443
-        #   IpProtocol: tcp
-        #   ToPort: 443
         - CidrIp: 0.0.0.0/0
           Description: "http"
           FromPort: 80
@@ -135,7 +131,6 @@ Resources:
     Properties:
       ImageId: !Ref Ec2ImageID
       InstanceType: t2.micro
-      # IamInstanceProfile: EC2SessionManagerInstanceProfile
       BlockDeviceMappings:
         - DeviceName: /dev/sdm
           Ebs:
@@ -153,29 +148,6 @@ Resources:
             - !GetAtt SecurityGroupIngress.GroupId
           SubnetId: !Ref PublicSubnet
       UserData: !Ref UserData
-
-  # SessionManagerInstanceProfile:
-  #   Type: AWS::IAM::InstanceProfile
-  #   Properties:
-  #     InstanceProfileName: EC2SessionManagerInstanceProfile
-  #     Roles:
-  #       - !Ref SessionManagerRole
-
-  # SessionManagerRole:
-  #   Type: AWS::IAM::Role
-  #   Properties:
-  #     AssumeRolePolicyDocument:
-  #       Version: "2012-10-17"
-  #       Statement:
-  #         - Effect: Allow
-  #           Principal:
-  #             Service:
-  #               - ec2.amazonaws.com
-  #           Action:
-  #             - sts:AssumeRole
-  #     Path: /
-  #     ManagedPolicyArns:
-  #       - arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM
 
   # GuardDuty Event Rule
   GuardDutyFindingsEventRule:

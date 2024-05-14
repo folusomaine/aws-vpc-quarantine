@@ -2,7 +2,7 @@
 A simple AWS VPC Quarantine solution.  
   
 This solution automates the deployment of resources that simulates the automatic lockdown of a VPC subnet when a malicious activity is detected.  
-See link [here](https://hashnode.com/draft/65fd75caa9f31955f1578f63) to the related blog post.
+See link [here](https://notonprem.hashnode.dev/securing-your-aws-vpc-with-an-automated-quarantine-solution) to the related blog post.
 
 ## Solution Architecture
 ![quarantine-solution](img/quarantine.png)
@@ -22,7 +22,7 @@ See link [here](https://hashnode.com/draft/65fd75caa9f31955f1578f63) to the rela
 * Go to VPC -> Network ACLs to confirm the `quarantine-nacl` has been deployed.
 
 
-### Clean Up
+### Cleanup
 In the AWS account;
 1. Remove the `quarantine-nacl` association from the public-subnet.
     - Go to VPC -> Network ACLs -> `quarantine-nacl` -> Subnet associations > Edit subnet associations
