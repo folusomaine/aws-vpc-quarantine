@@ -1,0 +1,52 @@
+name: Deploy VPC Quarantine solution
+
+on:
+  push:
+    branches: [ develop ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code from master branch
+        uses: actions/checkout@main
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@main
+        with:
+          aws-access-key-id: ${{ secrets.ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.SECRET_ACCESS_KEY }}
+          aws-region: eu-west-1
+
+      - name: Build and package lambda function
+        run: |
+          echo ">>> Clean build directory and move src into build"
+          rm -rf build && mkdir build && mv src/* build && cd build
+
+          echo ">>> Packaging lambda function..."
+          zip -r quarantine.zip .
+
+      - name: Create s3 bucket if it doesn't exist
+        run: |
+          account_id=$(aws sts get-caller-identity --query Account --output text)
+          bucket_name="${account_id}-vpc-quarantine-solution"
+
+          echo "bucket_name=$bucket_name" >> $GITHUB_ENV
+
+          aws s3api head-bucket --bucket $bucket_name || \
+          aws s3 mb s3://$bucket_name/ --region eu-west-1
+
+      - name: Upload Lambda function package to S3
+        run: aws s3 cp build/quarantine.zip s3://$bucket_name/quarantine.zip
+
+      - name: Deploy stack
+        run: |
+          aws cloudformation deploy \
+          --template-file template.yaml \
+          --stack-name VPC-QUARANTINE-SOLUTION \
+          --capabilities CAPABILITY_NAMED_IAM \
+          --parameter-overrides Ec2ImageID=ami-0d421d84814b7d51c \
+                                UserData=$(base64 -w0 user-data.sh) \
+                                S3BucketName=$bucket_name \
+                                S3Key=quarantine.zip \
+          --no-fail-on-empty-changeset

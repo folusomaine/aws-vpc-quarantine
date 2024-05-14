@@ -1,0 +1,249 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: VPC Quarantine Solution
+
+Parameters:
+  Ec2ImageID:
+    Description: Valid AMI ID passed from the pipeline
+    Type: String
+  UserData:
+    Description: UserData for the EC2 Instance
+    Type: String
+  S3BucketName:
+    Description: S3 Bucket Name for the Quarantine Lambda Function
+    Type: String
+  S3Key:
+    Description: Lambda code file zip
+    Type: String
+
+Resources:
+  # GuardDuty
+  GuardDutyDetector:
+    Type: AWS::GuardDuty::Detector
+    Properties:
+        Enable: True
+        FindingPublishingFrequency: FIFTEEN_MINUTES
+  # VPC
+  QuarantineVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 172.16.1.0/24
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags:
+        - Key: Name
+          Value: QuarantineVPC
+
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Sub "${AWS::Region}a"
+      CidrBlock: 172.16.1.0/26
+      Tags:
+        - Key: Name
+          Value: public-subnet
+      VpcId: !Ref QuarantineVPC
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: "Name"
+          Value: "QuarantineVPC-IGW"
+
+  VPCGatewayToInternet:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref QuarantineVPC
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      Tags:
+        - Key: "Name"
+          Value: "public-route-table"
+      VpcId: !Ref QuarantineVPC
+
+  PublicRouteToInternet:
+    Type: AWS::EC2::Route
+    DependsOn: VPCGatewayToInternet
+    Properties:
+       RouteTableId: !Ref PublicRouteTable
+       DestinationCidrBlock: 0.0.0.0/0
+       GatewayId: !Ref InternetGateway
+
+  PublicSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet
+
+  SecurityGroupIngress:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "allow ssm traffic"
+      GroupName: "ec2-ingress"
+      SecurityGroupIngress:
+        - CidrIp: 0.0.0.0/0
+          Description: "http"
+          FromPort: 80
+          IpProtocol: tcp
+          ToPort: 80
+      VpcId: !Ref QuarantineVPC
+
+  VPCNetworkAcl:
+    Type: AWS::EC2::NetworkAcl
+    Properties:
+      VpcId: !Ref QuarantineVPC
+      Tags:
+      - Key: "Name"
+        Value: "public-subnet-nacl"
+
+  PublicNaclAssociation:
+    Type: AWS::EC2::SubnetNetworkAclAssociation
+    Properties:
+      NetworkAclId: !Ref VPCNetworkAcl
+      SubnetId: !Ref PublicSubnet
+
+  NaclInboundRule:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+       NetworkAclId: !Ref VPCNetworkAcl
+       RuleNumber: 100
+       Protocol: -1
+       RuleAction: allow
+       CidrBlock: 0.0.0.0/0
+
+  NaclOutboundRule:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+       NetworkAclId: !Ref VPCNetworkAcl
+       RuleNumber: 100
+       Protocol: -1
+       Egress: true
+       RuleAction: allow
+       CidrBlock: 0.0.0.0/0
+
+  # EC2
+  PublicInstance:
+    DependsOn: VPCGatewayToInternet
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref Ec2ImageID
+      InstanceType: t2.micro
+      BlockDeviceMappings:
+        - DeviceName: /dev/sdm
+          Ebs:
+            VolumeType: io1
+            Iops: 200
+            DeleteOnTermination: true
+            VolumeSize: 20
+      Tags:
+        - Key: "Name"
+          Value: "public-instance"
+      NetworkInterfaces:
+        - AssociatePublicIpAddress: "true"
+          DeviceIndex: "0"
+          GroupSet:
+            - !GetAtt SecurityGroupIngress.GroupId
+          SubnetId: !Ref PublicSubnet
+      UserData: !Ref UserData
+
+  # GuardDuty Event Rule
+  GuardDutyFindingsEventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: "Pick up GuardDuty Findings and invoke the Quarantine Lambda"
+      Name: GuardDuty-Findings-Event
+      State: ENABLED
+      EventPattern:
+        source:
+          - aws.guardduty
+        detail-type:
+          - GuardDuty Finding
+        detail:
+          resource:
+            resourceType:
+              - Instance
+      Targets:
+        - Arn: !GetAtt QuarantineLambda.Arn
+          Id: QuarantineLambdaV1
+
+  EventRuleLambdaInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt QuarantineLambda.Arn
+      Action: 'lambda:InvokeFunction'
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt GuardDutyFindingsEventRule.Arn
+
+  # Lambda
+  QuarantineLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: QuarantineLambda
+      Description: Respond to GuardDuty Findings event and quarantine the related VPC
+      Code:
+        S3Bucket: !Ref S3BucketName
+        S3Key: !Ref S3Key
+      Handler: quarantine.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: python3.9
+      Timeout: 60
+      Layers:
+        - !Sub arn:aws:lambda:${AWS::Region}:017000801446:layer:AWSLambdaPowertoolsPythonV2:20
+      Environment:
+        Variables:
+          POWERTOOLS_SERVICE_NAME: VPC Quarantine Solution
+          POWERTOOLS_LOG_LEVEL: INFO
+
+  LambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${QuarantineLambda}"
+
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: QuarantineLambdaExecutionRole
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: /
+
+  LambdaExecutionRolePolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      Roles:
+        - !Ref LambdaExecutionRole
+      PolicyName: QuarantineLambdaExecutionRolePolicy
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: EnableLogging
+            Effect: Allow
+            Action:
+              - logs:PutLogEvents
+              - logs:CreateLogStream
+              - logs:CreateLogGroup
+            Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${QuarantineLambda}:*"
+          - Sid: EnableEc2NaclActions
+            Effect: Allow
+            Action:
+              - ec2:CreateNetworkAcl
+              - ec2:DescribeNetworkAcls
+              - ec2:ReplaceNetworkAclAssociation
+              - ec2:CreateTags
+            Resource: "*"
+
+Outputs:
+  InstancePublicIP:
+    Description: Public IP address of the EC2 Instance
+    Value: !GetAtt PublicInstance.PublicIp
