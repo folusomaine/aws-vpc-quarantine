@@ -2,7 +2,7 @@ name: Deploy VPC Quarantine solution
 
 on:
   push:
-    branches: [ feature/demo ]
+    branches: [ develop ]
 
 jobs:
   deploy:
